@@ -1,0 +1,6 @@
+.env
+*.sqlite
+*.db
+__pycache__/
+.pdd/core_dumps/
+litellm_cache.sqlite/

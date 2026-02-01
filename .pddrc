@@ -1,0 +1,22 @@
+version: 1
+
+defaults:
+  language: python
+  strength: 0.8
+  temperature: 0.0
+
+prompts:
+  search_paths:
+    - prompts
+
+examples:
+  search_paths:
+    - context
+
+tests:
+  search_paths:
+    - tests
+
+generate:
+  search_paths:
+    - src

@@ -1,0 +1,100 @@
+# SRE Agent for Scraps n' Bids
+
+## Overview
+
+You are an SRE monitoring agent for the Scraps n' Bids live auction platform at https://scraps-n-bids.vercel.app
+
+Your responsibilities:
+1. Monitor site health via HTTP checks and web scraping
+2. Detect incidents (site down, slow response, broken page elements)
+3. Announce status updates via voice using ElevenLabs TTS
+4. Log incidents with timestamps and details
+
+## Technical Requirements
+
+### Dependencies
+- requests: HTTP health checks
+- elevenlabs: Text-to-speech for voice alerts
+- toolhouse: Agent orchestration (optional, can run standalone)
+
+### Configuration
+- TARGET_SITE = "https://scraps-n-bids.vercel.app"
+- CHECK_INTERVAL = 30 seconds
+- SLOW_THRESHOLD = 2.0 seconds
+
+### Environment Variables
+- ELEVENLABS_API_KEY: API key for voice synthesis
+
+## Core Functions
+
+### health_check()
+Performs HTTP GET to TARGET_SITE and returns:
+- status_code: HTTP response code
+- response_time: Time in seconds
+- is_healthy: Boolean (200 status and response_time < SLOW_THRESHOLD)
+
+### scrape_auction_status()
+Uses requests + basic HTML parsing to extract:
+- current_item: Name of item being auctioned (or None if not found)
+- current_bid: Current bid amount as float (or None)
+- is_auction_running: Boolean based on whether auction elements exist
+
+### detect_incident(health_result, scrape_result)
+Analyzes results and returns incident dict if problem detected:
+- type: "site_down" | "slow_response" | "page_broken" | "auction_stalled"
+- severity: "P1" | "P2" | "P3"
+- message: Human-readable description
+Returns None if everything is healthy.
+
+### speak_alert(message)
+Uses ElevenLabs API to convert message to speech and play it.
+Uses the "Rachel" voice and "eleven_flash_v2_5" model for speed.
+
+### run_monitor_loop()
+Main loop that:
+1. Calls health_check()
+2. Calls scrape_auction_status()
+3. Calls detect_incident()
+4. If incident: speak_alert() and log to console
+5. If healthy: optionally announce status
+6. Sleep for CHECK_INTERVAL
+7. Repeat
+
+## Voice Alert Examples
+
+- Healthy: "Scraps n' Bids is online. Currently auctioning Tuesday's Pad Thai at $8.50."
+- Site down: "Alert: Scraps n' Bids is down. HTTP 503 error detected."
+- Slow: "Warning: Scraps n' Bids response time is 4.2 seconds. Performance degraded."
+- Broken: "Alert: Scraps n' Bids page is broken. Auction elements not found."
+
+## CLI Interface
+
+The script should be runnable as:
+```
+python sre_agent.py              # Start monitoring loop
+python sre_agent.py --once       # Single check, then exit
+python sre_agent.py --status     # Speak current status, then exit
+```
+
+## Error Handling
+
+- Network errors: Treat as site_down incident
+- Parse errors: Treat as page_broken incident
+- ElevenLabs errors: Fall back to console output only
+- All errors logged with timestamp
+
+## Output Format
+
+Console output should show:
+```
+[2026-01-31 15:30:00] Health check: 200 OK (0.45s)
+[2026-01-31 15:30:00] Auction: Tuesday's Pad Thai @ $8.50
+[2026-01-31 15:30:00] Status: HEALTHY
+```
+
+On incident:
+```
+[2026-01-31 15:30:30] Health check: FAILED - Connection timeout
+[2026-01-31 15:30:30] INCIDENT P1: Site down - Connection timeout
+[2026-01-31 15:30:30] Speaking alert...
+```
