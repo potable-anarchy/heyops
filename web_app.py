@@ -1,5 +1,5 @@
 """
-SRE Agent Web UI - Voice-controlled monitoring with diagnosis and fix suggestions.
+HeyOps - Voice-controlled SRE agent that monitors your site and tells you how to fix it.
 """
 
 import base64
@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse
 
 load_dotenv()
 
-app = FastAPI(title="SRE Agent")
+app = FastAPI(title="HeyOps")
 
 # Configuration
 TARGET_SITE = "https://scraps-n-bids.vercel.app"
@@ -305,7 +305,7 @@ async def index():
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SRE Agent - Scraps n' Bids</title>
+    <title>HeyOps - Voice-Controlled SRE</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -387,8 +387,8 @@ async def index():
 </head>
 <body>
     <div class="container">
-        <h1>🔧 SRE Agent</h1>
-        <p class="subtitle">Voice-Controlled Monitoring for Scraps n' Bids</p>
+        <h1>🎤 HeyOps</h1>
+        <p class="subtitle">Voice-Controlled SRE Agent</p>
 
         <div class="card">
             <div class="status">
@@ -416,7 +416,7 @@ async def index():
         <div class="card">
             <button class="btn mic" id="micBtn" onclick="toggleRecording()">🎤 Ask the Agent</button>
             <button class="btn" id="checkBtn" onclick="runCheck()">🔍 Run Check</button>
-            <div class="voice-status" id="voiceStatus">Click the microphone and ask "How's the site looking?"</div>
+            <div class="voice-status" id="voiceStatus">Say "Hey Ops, how's the site looking?"</div>
         </div>
 
         <div class="card" id="diagnosisCard" style="display: none;">
