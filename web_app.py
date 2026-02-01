@@ -389,8 +389,7 @@ async def index():
         .btn.recording { background: #ef4444; animation: pulse 1s infinite; }
         .btn.mic { background: #8b5cf6; }
         .btn.mic:hover { background: #7c3aed; }
-        .btn.quick { background: #334155; font-size: 0.875rem; padding: 0.5rem 1rem; }
-        .btn.quick:hover { background: #475569; }
+
         .diagnosis {
             background: #0f172a;
             padding: 1rem;
@@ -451,11 +450,9 @@ async def index():
         <div class="card">
             <button class="btn mic" id="micBtn" onclick="toggleRecording()">🎤 Ask the Agent</button>
             <button class="btn" id="checkBtn" onclick="runCheck()">🔍 Run Check</button>
-            <div class="grid" style="margin-top: 0.5rem;">
-                <button class="btn quick" onclick="askQuestion('auction')">🏷️ Current Auction</button>
-                <button class="btn quick" onclick="askQuestion('latency')">⏱️ Latency</button>
-            </div>
-            <button class="btn quick" onclick="askQuestion('status')" style="margin-top: 0;">📡 Response Code</button>
+            <button class="btn" onclick="askQuestion('auction')">🏷️ Current Auction</button>
+            <button class="btn" onclick="askQuestion('latency')">⏱️ Latency</button>
+            <button class="btn" onclick="askQuestion('status')">📡 Response Code</button>
             <div class="voice-status" id="voiceStatus">Say "Hey Ops, how's the site looking?"</div>
         </div>
 
@@ -621,7 +618,7 @@ async def index():
         }
 
         async function askQuestion(type) {
-            const btns = document.querySelectorAll('.btn.quick');
+            const btns = document.querySelectorAll('.btn');
             btns.forEach(b => b.disabled = true);
             log('Asking: ' + type + '...');
 
@@ -642,6 +639,7 @@ async def index():
             }
 
             btns.forEach(b => b.disabled = false);
+            document.getElementById('checkBtn').textContent = '🔍 Run Check';
         }
     </script>
 </body>
