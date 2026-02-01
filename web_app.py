@@ -94,6 +94,16 @@ def scrape_auction():
         if bid_match:
             current_bid = float(bid_match.group(1))
 
+        # Parse description from textNode (text before "LIVE" or category keywords)
+        description = None
+        desc_match = re.search(r"\[textNode\]\s*(.*?)\s*(?:LIVE\s)", tree)
+        if desc_match:
+            desc = desc_match.group(1).strip()
+            # Remove trailing category tag (e.g. "asian", "mexican")
+            desc = re.sub(r"\s+\w+$", "", desc).strip()
+            if desc:
+                description = desc
+
         # Check if auction is live (look for LIVE indicator)
         is_live = bool(re.search(r"LIVE", tree))
 
@@ -108,6 +118,7 @@ def scrape_auction():
         return {
             "current_item": current_item,
             "current_bid": current_bid,
+            "description": description,
             "is_auction_running": is_live and current_bid is not None,
             "raw_tree": tree,
         }
@@ -115,6 +126,7 @@ def scrape_auction():
         return {
             "current_item": None,
             "current_bid": None,
+            "description": None,
             "is_auction_running": False,
             "error": str(e),
         }
@@ -279,12 +291,16 @@ def generate_voice_response(diagnosis_result, auction):
     if diagnosis_result.get("status") == "healthy":
         item = auction.get("current_item", "an item")
         bid = auction.get("current_bid", 0)
+        desc = auction.get("description")
         bid_str = f"at ${bid:.2f}" if bid else "with no bids yet"
-        return f"The site is looking good. We're currently auctioning {item} {bid_str}. No issues detected."
+        desc_str = f" {desc}." if desc else ""
+        return f"The site is looking good. We're currently auctioning {item} {bid_str}.{desc_str} No issues detected."
 
     if diagnosis_result.get("status") == "degraded":
         bid = auction.get("current_bid", 0)
-        return f"{diagnosis_result.get('diagnosis', '')} The current bid is ${bid:.2f}. {diagnosis_result.get('fix', '')}"
+        desc = auction.get("description")
+        desc_str = f" Description: {desc}." if desc else ""
+        return f"{diagnosis_result.get('diagnosis', '')} The current bid is ${bid:.2f}.{desc_str} {diagnosis_result.get('fix', '')}"
 
     diagnosis = diagnosis_result.get("diagnosis", "There's an issue.")
     fix = diagnosis_result.get("fix", "")
@@ -695,10 +711,12 @@ async def api_ask(q: str = "check"):
     if q == "auction":
         item = auction.get("current_item") or "unknown"
         bid = auction.get("current_bid")
+        desc = auction.get("description")
         running = auction.get("is_auction_running")
         if running and bid is not None:
             bid_str = f"${bid:.2f}" if bid else "no bids yet"
-            voice_text = f"The current auction item is {item}, with a bid of {bid_str}."
+            desc_str = f" {desc}." if desc else ""
+            voice_text = f"The current auction item is {item}, with a bid of {bid_str}.{desc_str}"
         else:
             voice_text = "The auction doesn't appear to be running right now."
         diagnosis = {
