@@ -474,9 +474,6 @@ async def index():
             <div class="voice-status" id="voiceStatus">Say "Hey Ops, how's the site looking?"</div>
             <button class="btn mic" id="micBtn" onclick="toggleRecording()">🎤 Ask the Agent</button>
             <button class="btn" id="checkBtn" onclick="runCheck()">🔍 Run Check</button>
-            <button class="btn" onclick="askQuestion('auction')">🏷️ Current Auction</button>
-            <button class="btn" onclick="askQuestion('latency')">⏱️ Latency</button>
-            <button class="btn" onclick="askQuestion('status')">📡 Response Code</button>
         </div>
 
         <div class="card" id="diagnosisCard" style="display: none;">
