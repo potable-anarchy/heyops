@@ -115,11 +115,20 @@ def scrape_auction():
                 if alt and alt.lower() not in ["meal photo"]:
                     current_item = alt
 
+        # Check image URLs for wrong paths
+        image_urls = re.findall(
+            r"url=(https?://[^\]\s]+\.(?:png|jpg|jpeg|gif|webp|svg))", tree
+        )
+        wrong_image_paths = [
+            url for url in image_urls if "/imgs/" in url or "/img/" in url
+        ]
+
         return {
             "current_item": current_item,
             "current_bid": current_bid,
             "description": description,
             "is_auction_running": is_live and current_bid is not None,
+            "wrong_image_paths": wrong_image_paths,
             "raw_tree": tree,
         }
     except Exception as e:
@@ -273,6 +282,18 @@ def diagnose_and_suggest_fix(health, auction, status_page):
             "severity": "P3",
             "status": "degraded",
             "current_bid": auction.get("current_bid"),
+        }
+
+    # Check for broken image paths from auction page
+    wrong_images = auction.get("wrong_image_paths", [])
+    if wrong_images:
+        wrong_path = "imgs/" if any("/imgs/" in url for url in wrong_images) else "img/"
+        return {
+            "diagnosis": f"Images are broken. The image paths are using '{wrong_path}' instead of 'images/'.",
+            "cause": "The photo property in the MEALS array in index.html has incorrect paths.",
+            "fix": f"Open index.html, find the MEALS array, and change all '{wrong_path}' to 'images/' in the photo properties.",
+            "severity": "P2",
+            "failed_images": wrong_images,
         }
 
     # All good
