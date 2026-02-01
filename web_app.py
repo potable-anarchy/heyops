@@ -12,7 +12,7 @@ import requests
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
 from fastapi import FastAPI, File, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 load_dotenv()
 
@@ -332,6 +332,14 @@ def transcribe_audio(audio_bytes: bytes) -> Optional[str]:
         return None
 
 
+@app.get("/logo.png")
+async def logo():
+    return FileResponse(
+        os.path.join(os.path.dirname(__file__), "logo.png"),
+        media_type="image/png",
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     return """
@@ -421,8 +429,7 @@ async def index():
 </head>
 <body>
     <div class="container">
-        <h1>🎤 HeyOps</h1>
-        <p class="subtitle">Voice-Controlled SRE Agent</p>
+        <img src="/logo.png" alt="HeyOps" style="max-width: 320px; margin-bottom: 1.5rem;">
 
         <div class="card">
             <div class="status">
@@ -448,12 +455,12 @@ async def index():
         </div>
 
         <div class="card">
+            <div class="voice-status" id="voiceStatus">Say "Hey Ops, how's the site looking?"</div>
             <button class="btn mic" id="micBtn" onclick="toggleRecording()">🎤 Ask the Agent</button>
             <button class="btn" id="checkBtn" onclick="runCheck()">🔍 Run Check</button>
             <button class="btn" onclick="askQuestion('auction')">🏷️ Current Auction</button>
             <button class="btn" onclick="askQuestion('latency')">⏱️ Latency</button>
             <button class="btn" onclick="askQuestion('status')">📡 Response Code</button>
-            <div class="voice-status" id="voiceStatus">Say "Hey Ops, how's the site looking?"</div>
         </div>
 
         <div class="card" id="diagnosisCard" style="display: none;">
