@@ -214,62 +214,39 @@ def diagnose_and_suggest_fix(health, auction, status_page):
 
     # Check status page for specific issues
     if status_page:
-        # Image path issues
         if status_page.get("image_error_rate", 0) > 0 or status_page.get(
             "failed_images"
         ):
             failed = status_page.get("failed_images", [])
-            # Detect wrong path pattern
-            wrong_path = None
-            if any("imgs/" in url for url in failed):
-                wrong_path = "imgs/"
-                correct_path = "images/"
-            elif any("/img/" in url for url in failed):
-                wrong_path = "img/"
-                correct_path = "images/"
-
-            if wrong_path:
-                return {
-                    "diagnosis": f"Images are failing to load. The image paths are using '{wrong_path}' instead of 'images/'.",
-                    "cause": f"The photo property in the MEALS array in index.html has incorrect paths.",
-                    "fix": f"Open index.html, find the MEALS array, and change all '{wrong_path}' to '{correct_path}' in the photo properties.",
-                    "severity": "P1",
-                    "failed_images": failed,
-                }
-            else:
-                return {
-                    "diagnosis": "Images are failing to load with 404 errors.",
-                    "cause": "Image paths in the MEALS array don't match actual files in the images directory.",
-                    "fix": "Check the photo properties in the MEALS array in index.html. Make sure they match the actual filenames in the images folder.",
-                    "severity": "P1",
-                    "failed_images": failed,
-                }
-
-        # Auction transition delay issue
-        if status_page.get("auction_transition") and "minute" in str(
-            status_page.get("auction_transition", "")
-        ):
             return {
-                "diagnosis": "Auctions are getting stuck after showing SOLD.",
-                "cause": "The AUCTION_TRANSITION_DELAY constant is set too high, probably 300000 instead of 3000.",
-                "fix": "Open index.html, search for AUCTION_TRANSITION_DELAY, and change it from 300000 to 3000. That's 3 seconds instead of 5 minutes.",
-                "severity": "P2",
+                "diagnosis": "Images are failing to load.",
+                "cause": f"Image 404 errors detected. Failed URLs: {', '.join(failed) if failed else 'unknown'}",
+                "severity": "P1",
+                "failed_images": failed,
             }
 
         if status_page.get("overall_status") == "CRITICAL":
             return {
                 "diagnosis": "The status page shows CRITICAL status.",
                 "cause": "Multiple issues detected on the status page.",
-                "fix": "Check the status page at /status.html for specific errors. Common issues are image paths or transition delays.",
                 "severity": "P1",
             }
+
+    # Check for broken image URLs from auction page
+    wrong_images = auction.get("wrong_image_paths", [])
+    if wrong_images:
+        return {
+            "diagnosis": "Images are broken on the auction page.",
+            "cause": f"Image URLs returning errors: {', '.join(wrong_images)}",
+            "severity": "P1",
+            "failed_images": wrong_images,
+        }
 
     # Check auction status
     if not auction.get("is_auction_running"):
         return {
             "diagnosis": "The auction doesn't appear to be running.",
-            "cause": "Could not find LIVE indicator or bid info on the page. Possible JavaScript error or the bidding engine is disabled.",
-            "fix": "Check the browser console for JavaScript errors. Make sure the MEALS array has valid data and no syntax errors.",
+            "cause": "Could not find LIVE indicator or bid info on the page.",
             "severity": "P2",
         }
 
@@ -277,23 +254,10 @@ def diagnose_and_suggest_fix(health, auction, status_page):
     if not auction.get("current_item"):
         return {
             "diagnosis": "The auction is live but the item name isn't showing.",
-            "cause": "The auction timer is running and bids are accepted, but the current item name is empty.",
-            "fix": "Check the MEALS array in index.html. The current item's name property might be empty or undefined.",
+            "cause": "The auction timer is running but the current item name is empty.",
             "severity": "P3",
             "status": "degraded",
             "current_bid": auction.get("current_bid"),
-        }
-
-    # Check for broken image paths from auction page
-    wrong_images = auction.get("wrong_image_paths", [])
-    if wrong_images:
-        wrong_path = "imgs/" if any("/imgs/" in url for url in wrong_images) else "img/"
-        return {
-            "diagnosis": f"Images are broken. The image paths are using '{wrong_path}' instead of 'images/'.",
-            "cause": "The photo property in the MEALS array in index.html has incorrect paths.",
-            "fix": f"Open index.html, find the MEALS array, and change all '{wrong_path}' to 'images/' in the photo properties.",
-            "severity": "P1",
-            "failed_images": wrong_images,
         }
 
     # All good
@@ -321,14 +285,14 @@ def generate_voice_response(diagnosis_result, auction):
         bid = auction.get("current_bid", 0)
         desc = auction.get("description")
         desc_str = f" Description: {desc}." if desc else ""
-        return f"{diagnosis_result.get('diagnosis', '')} The current bid is ${bid:.2f}.{desc_str} {diagnosis_result.get('fix', '')}"
+        return f"{diagnosis_result.get('diagnosis', '')} The current bid is ${bid:.2f}.{desc_str}"
 
     diagnosis = diagnosis_result.get("diagnosis", "There's an issue.")
-    fix = diagnosis_result.get("fix", "")
+    cause = diagnosis_result.get("cause", "")
 
-    response = f"{diagnosis} "
-    if fix:
-        response += f"To fix this: {fix}"
+    response = diagnosis
+    if cause:
+        response += f" {cause}"
 
     return response
 
