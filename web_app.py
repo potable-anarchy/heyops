@@ -19,8 +19,8 @@ load_dotenv()
 app = FastAPI(title="HeyOps")
 
 # Configuration
-TARGET_SITE = "https://scraps-n-bids.vercel.app"
-STATUS_PAGE = "https://scraps-n-bids.vercel.app/status.html"
+TARGET_SITE = "https://scraps-n-bids.brad-dougherty.com"
+STATUS_PAGE = "https://scraps-n-bids.brad-dougherty.com/status.html"
 SLOW_THRESHOLD = 2.0
 
 # ElevenLabs client
