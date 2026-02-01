@@ -233,7 +233,7 @@ def diagnose_and_suggest_fix(health, auction, status_page):
                     "diagnosis": f"Images are failing to load. The image paths are using '{wrong_path}' instead of 'images/'.",
                     "cause": f"The photo property in the MEALS array in index.html has incorrect paths.",
                     "fix": f"Open index.html, find the MEALS array, and change all '{wrong_path}' to '{correct_path}' in the photo properties.",
-                    "severity": "P2",
+                    "severity": "P1",
                     "failed_images": failed,
                 }
             else:
@@ -241,7 +241,7 @@ def diagnose_and_suggest_fix(health, auction, status_page):
                     "diagnosis": "Images are failing to load with 404 errors.",
                     "cause": "Image paths in the MEALS array don't match actual files in the images directory.",
                     "fix": "Check the photo properties in the MEALS array in index.html. Make sure they match the actual filenames in the images folder.",
-                    "severity": "P2",
+                    "severity": "P1",
                     "failed_images": failed,
                 }
 
@@ -292,7 +292,7 @@ def diagnose_and_suggest_fix(health, auction, status_page):
             "diagnosis": f"Images are broken. The image paths are using '{wrong_path}' instead of 'images/'.",
             "cause": "The photo property in the MEALS array in index.html has incorrect paths.",
             "fix": f"Open index.html, find the MEALS array, and change all '{wrong_path}' to 'images/' in the photo properties.",
-            "severity": "P2",
+            "severity": "P1",
             "failed_images": wrong_images,
         }
 
