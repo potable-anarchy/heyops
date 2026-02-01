@@ -79,25 +79,36 @@ def scrape_auction():
 
         tree = data["tabs"][0].get("tree", "")
 
+        # Parse item name from h2 elements (skip "Bid History" and empty ones)
         current_item = None
-        h2_matches = re.findall(r"\[h2\]\s*([^\n\[]+)", tree)
+        h2_matches = re.findall(r"\[h2\]\s*([^\n\[]*)", tree)
         for match in h2_matches:
             match = match.strip()
-            if match and match.lower() not in ["bid history", ""]:
+            if match and match.lower() not in ["bid history"]:
                 current_item = match
                 break
 
+        # Parse bid from "Current Bid $X.XX" pattern in textNode
         current_bid = None
-        price_match = re.search(r"\$(\d+\.?\d*)", tree)
-        if price_match:
-            current_bid = float(price_match.group(1))
+        bid_match = re.search(r"Current Bid\s*\$(\d+\.?\d*)", tree)
+        if bid_match:
+            current_bid = float(bid_match.group(1))
+
+        # Check if auction is live (look for LIVE indicator)
+        is_live = bool(re.search(r"LIVE", tree))
+
+        # If no item name from h2, try to get it from the img alt text
+        if not current_item:
+            img_match = re.search(r"\[img\]\s*([^\[\n]+)", tree)
+            if img_match:
+                alt = img_match.group(1).strip()
+                if alt and alt.lower() not in ["meal photo"]:
+                    current_item = alt
 
         return {
             "current_item": current_item,
             "current_bid": current_bid,
-            "is_auction_running": bool(
-                current_item and current_bid and current_bid > 0
-            ),
+            "is_auction_running": is_live and current_bid is not None,
             "raw_tree": tree,
         }
     except Exception as e:
@@ -236,9 +247,20 @@ def diagnose_and_suggest_fix(health, auction, status_page):
     if not auction.get("is_auction_running"):
         return {
             "diagnosis": "The auction doesn't appear to be running.",
-            "cause": "Could not find auction elements on the page. Possible JavaScript error or the bidding engine is disabled.",
+            "cause": "Could not find LIVE indicator or bid info on the page. Possible JavaScript error or the bidding engine is disabled.",
             "fix": "Check the browser console for JavaScript errors. Make sure the MEALS array has valid data and no syntax errors.",
             "severity": "P2",
+        }
+
+    # Auction is live but no item name visible
+    if not auction.get("current_item"):
+        return {
+            "diagnosis": "The auction is live but the item name isn't showing.",
+            "cause": "The auction timer is running and bids are accepted, but the current item name is empty.",
+            "fix": "Check the MEALS array in index.html. The current item's name property might be empty or undefined.",
+            "severity": "P3",
+            "status": "degraded",
+            "current_bid": auction.get("current_bid"),
         }
 
     # All good
@@ -257,7 +279,12 @@ def generate_voice_response(diagnosis_result, auction):
     if diagnosis_result.get("status") == "healthy":
         item = auction.get("current_item", "an item")
         bid = auction.get("current_bid", 0)
-        return f"The site is looking good. We're currently auctioning {item} at ${bid:.2f}. No issues detected."
+        bid_str = f"at ${bid:.2f}" if bid else "with no bids yet"
+        return f"The site is looking good. We're currently auctioning {item} {bid_str}. No issues detected."
+
+    if diagnosis_result.get("status") == "degraded":
+        bid = auction.get("current_bid", 0)
+        return f"{diagnosis_result.get('diagnosis', '')} The current bid is ${bid:.2f}. {diagnosis_result.get('fix', '')}"
 
     diagnosis = diagnosis_result.get("diagnosis", "There's an issue.")
     fix = diagnosis_result.get("fix", "")
@@ -291,9 +318,15 @@ def transcribe_audio(audio_bytes: bytes) -> Optional[str]:
     if not client:
         return None
     try:
-        # ElevenLabs STT
-        result = client.speech_to_text.convert(audio=audio_bytes)
-        return result.text
+        import io
+
+        audio_file = io.BytesIO(audio_bytes)
+        audio_file.name = "recording.webm"
+        result = client.speech_to_text.convert(
+            file=audio_file,
+            model_id="scribe_v1",
+        )
+        return result.text if result.text else None
     except Exception as e:
         print(f"STT error: {e}")
         return None
