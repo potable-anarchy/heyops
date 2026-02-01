@@ -36,7 +36,7 @@ except Exception:
 def health_check():
     try:
         start = time.time()
-        resp = requests.get(TARGET_SITE, timeout=10)
+        resp = requests.get(STATUS_PAGE, timeout=10)
         duration = time.time() - start
         return {
             "status_code": resp.status_code,
