@@ -389,6 +389,8 @@ async def index():
         .btn.recording { background: #ef4444; animation: pulse 1s infinite; }
         .btn.mic { background: #8b5cf6; }
         .btn.mic:hover { background: #7c3aed; }
+        .btn.quick { background: #334155; font-size: 0.875rem; padding: 0.5rem 1rem; }
+        .btn.quick:hover { background: #475569; }
         .diagnosis {
             background: #0f172a;
             padding: 1rem;
@@ -449,6 +451,11 @@ async def index():
         <div class="card">
             <button class="btn mic" id="micBtn" onclick="toggleRecording()">🎤 Ask the Agent</button>
             <button class="btn" id="checkBtn" onclick="runCheck()">🔍 Run Check</button>
+            <div class="grid" style="margin-top: 0.5rem;">
+                <button class="btn quick" onclick="askQuestion('auction')">🏷️ Current Auction</button>
+                <button class="btn quick" onclick="askQuestion('latency')">⏱️ Latency</button>
+            </div>
+            <button class="btn quick" onclick="askQuestion('status')" style="margin-top: 0;">📡 Response Code</button>
             <div class="voice-status" id="voiceStatus">Say "Hey Ops, how's the site looking?"</div>
         </div>
 
@@ -612,6 +619,30 @@ async def index():
             btn.disabled = false;
             btn.textContent = '🔍 Run Check';
         }
+
+        async function askQuestion(type) {
+            const btns = document.querySelectorAll('.btn.quick');
+            btns.forEach(b => b.disabled = true);
+            log('Asking: ' + type + '...');
+
+            try {
+                const resp = await fetch('/api/ask?q=' + type);
+                const data = await resp.json();
+                updateUIWithResults(data);
+
+                if (data.audio) {
+                    const audio = document.getElementById('audio');
+                    audio.src = 'data:audio/mp3;base64,' + data.audio;
+                    audio.play();
+                }
+
+                log('Agent: ' + data.voice_response, data.diagnosis?.status === 'healthy' ? 'healthy' : '');
+            } catch (err) {
+                log('Error: ' + err.message, 'incident');
+            }
+
+            btns.forEach(b => b.disabled = false);
+        }
     </script>
 </body>
 </html>
@@ -642,6 +673,68 @@ async def voice_query(audio: UploadFile = File(...)):
 
     return {
         "transcription": transcription,
+        "health": health,
+        "auction": {k: v for k, v in auction.items() if k != "raw_tree"},
+        "diagnosis": diagnosis,
+        "voice_response": voice_text,
+        "audio": audio_b64,
+    }
+
+
+@app.get("/api/ask")
+async def api_ask(q: str = "check"):
+    """Answer a specific text question."""
+    health = health_check()
+    auction = scrape_auction()
+
+    if q == "auction":
+        item = auction.get("current_item") or "unknown"
+        bid = auction.get("current_bid")
+        running = auction.get("is_auction_running")
+        if running and bid is not None:
+            bid_str = f"${bid:.2f}" if bid else "no bids yet"
+            voice_text = f"The current auction item is {item}, with a bid of {bid_str}."
+        else:
+            voice_text = "The auction doesn't appear to be running right now."
+        diagnosis = {
+            "diagnosis": voice_text,
+            "status": "healthy" if running else "degraded",
+            "severity": None if running else "P2",
+        }
+    elif q == "latency":
+        rt = health.get("response_time", 0)
+        slow = rt >= SLOW_THRESHOLD
+        voice_text = f"Current response time is {rt} seconds." + (
+            f" That's above the {SLOW_THRESHOLD}s threshold."
+            if slow
+            else " Looking good."
+        )
+        diagnosis = {
+            "diagnosis": voice_text,
+            "status": "healthy" if not slow else "degraded",
+            "severity": "P2" if slow else None,
+        }
+    elif q == "status":
+        code = health.get("status_code")
+        err = health.get("error")
+        if err:
+            voice_text = f"The site returned an error: {err}"
+            diagnosis = {"diagnosis": voice_text, "status": "down", "severity": "P1"}
+        elif code == 200:
+            voice_text = f"HTTP status code is {code}. The site is responding normally."
+            diagnosis = {"diagnosis": voice_text, "status": "healthy", "severity": None}
+        else:
+            voice_text = f"HTTP status code is {code}. That's unexpected."
+            diagnosis = {
+                "diagnosis": voice_text,
+                "status": "degraded",
+                "severity": "P2",
+            }
+    else:
+        return await api_check()
+
+    audio_b64 = get_voice_audio(voice_text)
+    return {
         "health": health,
         "auction": {k: v for k, v in auction.items() if k != "raw_tree"},
         "diagnosis": diagnosis,
