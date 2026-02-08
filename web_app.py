@@ -430,6 +430,7 @@ async def index():
 </head>
 <body>
     <div class="container">
+        <a href="https://github.com/potable-anarchy/heyops" target="_blank" style="color: #94a3b8; font-size: 0.875rem; text-decoration: none; display: block; margin-bottom: 0.5rem;">github.com/potable-anarchy/heyops</a>
         <img src="/logo.png" alt="HeyOps" style="max-width: 320px; margin-bottom: 1.5rem;">
 
         <div class="card">
